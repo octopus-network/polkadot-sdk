@@ -107,7 +107,7 @@ pub enum InitialPayment<T: Config> {
 }
 
 pub use pallet::*;
-
+use sp_runtime::traits::Get;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -120,6 +120,8 @@ pub mod pallet {
 		type Fungibles: Balanced<Self::AccountId>;
 		/// The actual transaction charging logic that charges the fees.
 		type OnChargeAssetTransaction: OnChargeAssetTransaction<Self>;
+
+		type ChargeAssetId: Get<ChargeAssetIdOf<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -189,11 +191,22 @@ where
 			)
 			.map(|i| (fee, InitialPayment::Asset(i.into())))
 		} else {
-			<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::withdraw_fee(
+			let asset_id = T::ChargeAssetId::get();
+			T::OnChargeAssetTransaction::withdraw_fee(
+				who,
+				call,
+				info,
+				asset_id,
+				fee.into(),
+				self.tip.into(),
+			)
+				.map(|i| (fee, InitialPayment::Asset(i.into())))
+		/*	<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::withdraw_fee(
 				who, call, info, fee, self.tip,
 			)
 			.map(|i| (fee, InitialPayment::Native(i)))
-			.map_err(|_| -> TransactionValidityError { InvalidTransaction::Payment.into() })
+			.map_err(|_| -> TransactionValidityError { InvalidTransaction::Payment.into() })*/
+
 		}
 	}
 }
